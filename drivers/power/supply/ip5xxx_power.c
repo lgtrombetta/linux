@@ -586,10 +586,9 @@ static const struct regmap_config ip5xxx_regmap_config = {
 	.max_register		= IP5XXX_BATOCV_DAT1,
 };
 
-static int ip5xxx_power_probe(struct i2c_client *client)
+int ip5xxx_power_probe_with_regmap(struct device* dev, struct regmap *regmap)
 {
 	struct power_supply_config psy_cfg = {};
-	struct device *dev = &client->dev;
 	struct power_supply *psy;
 	struct ip5xxx *ip5xxx;
 
@@ -597,9 +596,7 @@ static int ip5xxx_power_probe(struct i2c_client *client)
 	if (!ip5xxx)
 		return -ENOMEM;
 
-	ip5xxx->regmap = devm_regmap_init_i2c(client, &ip5xxx_regmap_config);
-	if (IS_ERR(ip5xxx->regmap))
-		return PTR_ERR(ip5xxx->regmap);
+	ip5xxx->regmap = regmap;
 
 	psy_cfg.of_node = dev->of_node;
 	psy_cfg.drv_data = ip5xxx;
@@ -613,6 +610,18 @@ static int ip5xxx_power_probe(struct i2c_client *client)
 		return PTR_ERR(psy);
 
 	return 0;
+}
+EXPORT_SYMBOL_GPL(ip5xxx_power_probe_with_regmap);
+
+static int ip5xxx_power_probe(struct i2c_client *client)
+{
+	struct regmap* regmap;
+
+	regmap = devm_regmap_init_i2c(client, &ip5xxx_regmap_config);
+	if (IS_ERR(regmap))
+		return PTR_ERR(regmap);
+
+	return ip5xxx_power_probe_with_regmap(&client->dev, regmap);
 }
 
 static const struct of_device_id ip5xxx_power_of_match[] = {
