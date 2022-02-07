@@ -639,6 +639,14 @@
 	i2c-scl-falling-time-ns = <15>;
 	status = "okay";
 
+	// XXX: modem codec supplies:
+	// - vcc1v8_codec
+	// - vcca3v0_codec
+
+	// supplies: (always on currently)
+	// - vcca3v0_codec
+	// - vcca1v8_codec
+	// - vcc5v0_sys - spk_vcc
 	rt5640: rt5640@1c {
 		compatible = "realtek,rt5640";
 		reg = <0x1c>;
