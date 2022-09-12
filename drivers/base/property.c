@@ -1292,11 +1292,11 @@ void *fwnode_connection_find_match(struct fwnode_handle *fwnode,
 	if (!fwnode || !match)
 		return NULL;
 
-	count = fwnode_graph_devcon_matches(fwnode, con_id, data, match, &ret, 1);
+	count = fwnode_devcon_matches(fwnode, con_id, data, match, &ret, 1);
 	if (count)
 		return ret;
 
-	count = fwnode_devcon_matches(fwnode, con_id, data, match, &ret, 1);
+	count = fwnode_graph_devcon_matches(fwnode, con_id, data, match, &ret, 1);
 	return count ? ret : NULL;
 }
 EXPORT_SYMBOL_GPL(fwnode_connection_find_match);

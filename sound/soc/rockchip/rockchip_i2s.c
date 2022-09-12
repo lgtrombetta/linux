@@ -66,10 +66,23 @@ static int i2s_runtime_suspend(struct device *dev)
 	return 0;
 }
 
+/*
+ * Code below is patched with the "smurfbug" workaround
+ * The basic idea is to force the hardware to reconfigure the clock on resume by
+ * saving the set clock to a temporary register, setting the hardware to another
+ * clock rate, then finally setting the clock back to the saved rate.
+ * We're still investigating why this works but neither forcing a register write
+ * nor forcing a clock rate makes any difference.
+*/
+
 static int i2s_runtime_resume(struct device *dev)
 {
 	struct rk_i2s_dev *i2s = dev_get_drvdata(dev);
 	int ret;
+	/* Smurfbug workaround */
+	int ret_smurfbug;
+	unsigned int ret_smurfbug_freq;
+	unsigned int ret_smurfbug_reg;
 
 	ret = clk_prepare_enable(i2s->mclk);
 	if (ret) {
@@ -83,6 +96,38 @@ static int i2s_runtime_resume(struct device *dev)
 	ret = regcache_sync(i2s->regmap);
 	if (ret)
 		clk_disable_unprepare(i2s->mclk);
+
+	/* Smurfbug workaround */
+	ret_smurfbug_freq = clk_get_rate(i2s->mclk);
+	if (ret_smurfbug_freq) {
+		dev_dbg(i2s->dev, "Resume freq %u\n", ret_smurfbug_freq);
+	} else {
+		dev_err(i2s->dev, "Fail to get mclk %d\n", ret_smurfbug);
+	}
+	ret_smurfbug = clk_set_rate(i2s->mclk, 800000);
+	if (!ret_smurfbug) {
+		dev_dbg(i2s->dev, "Set mclk to %d\n", 800000);
+	} else {
+		dev_err(i2s->dev, "Fail to set mclk %d\n", 800000);
+	}
+	ret_smurfbug = regmap_read(i2s->regmap, I2S_CKR, &ret_smurfbug_reg);
+	if (!ret_smurfbug) {
+		dev_dbg(i2s->dev, "Resume new I2S_CKR %x\n", ret_smurfbug_reg);
+	} else {
+		dev_err(i2s->dev, "Fail to get I2S_CKR %d\n", ret_smurfbug);
+	}
+	ret_smurfbug = clk_set_rate(i2s->mclk, ret_smurfbug_freq);
+	if (!ret_smurfbug) {
+		dev_dbg(i2s->dev, "Set mclk to %d\n", ret_smurfbug_freq);
+	} else {
+		dev_err(i2s->dev, "Fail to set mclk %d\n", ret_smurfbug_freq);
+	}
+	ret_smurfbug = regmap_read(i2s->regmap, I2S_CKR, &ret_smurfbug_reg);
+	if (!ret_smurfbug) {
+		dev_dbg(i2s->dev, "Resume new I2S_CKR %x\n", ret_smurfbug_reg);
+	} else {
+		dev_err(i2s->dev, "Fail to get I2S_CKR %d\n", ret_smurfbug);
+	}
 
 	return ret;
 }
